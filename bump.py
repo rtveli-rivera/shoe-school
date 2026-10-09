@@ -4,7 +4,9 @@
 Increments APP_VERSION in js/app.js, the CACHE version in sw.js, and rewrites
 sw.js's ASSETS list from the files on disk, so every file the app loads is
 cached for offline use. Bumping the cache is what makes an installed app notice
-the new release and show its "Update" banner.
+the new release and show its "Update" banner. It also sets the Android app's
+versionName to the same version and raises its versionCode, so a new APK
+installs over the old one.
 
 Usage:
     py bump.py            # patch: 0.1.0 -> 0.1.1  (and sw v1 -> v2)
@@ -22,6 +24,10 @@ SW = ROOT / "sw.js"
 
 APP_RE = re.compile(r"(const APP_VERSION = ')(\d+)\.(\d+)\.(\d+)(';)")
 SW_RE = re.compile(r"(const CACHE = 'shoeschool-v)(\d+)(';)")
+GRADLE = ROOT / "android" / "app" / "build.gradle"
+LF = "\n"  # write files with Unix line endings, as the repo stores them
+VCODE_RE = re.compile(r"(versionCode )(\d+)")
+VNAME_RE = re.compile(r'(versionName ")([^"]*)(")')
 ASSETS_RE = re.compile(r"(  // <assets>[^\n]*\n)(.*?)(  // </assets>)", re.S)
 
 # Everything the browser loads at runtime.
@@ -68,6 +74,20 @@ def bump_sw(text):
     return SW_RE.sub(rf"\g<1>{n}\g<3>", text, count=1), f"v{n}"
 
 
+def bump_android(version):
+    if not GRADLE.exists():
+        return None
+    text = GRADLE.read_text(encoding="utf-8")
+    m = VCODE_RE.search(text)
+    if not m or not VNAME_RE.search(text):
+        raise SystemExit("Could not find versionCode/versionName in android/app/build.gradle")
+    code = int(m.group(2)) + 1
+    text = VCODE_RE.sub(rf"\g<1>{code}", text, count=1)
+    text = VNAME_RE.sub(rf'\g<1>{version}\g<3>', text, count=1)
+    GRADLE.write_text(text, encoding="utf-8", newline=LF)
+    return code
+
+
 def main():
     part = sys.argv[1] if len(sys.argv) > 1 else "patch"
     if part not in ("patch", "minor", "major", "assets"):
@@ -75,15 +95,17 @@ def main():
 
     sw_text = write_assets(SW.read_text(encoding="utf-8"))
     if part == "assets":
-        SW.write_text(sw_text, encoding="utf-8")
+        SW.write_text(sw_text, encoding="utf-8", newline=LF)
         print(f"sw.js ASSETS regenerated ({len(asset_list())} files)")
         return
 
     app_text, app_ver = bump_app(APP.read_text(encoding="utf-8"), part)
     sw_text, sw_ver = bump_sw(sw_text)
-    APP.write_text(app_text, encoding="utf-8")
-    SW.write_text(sw_text, encoding="utf-8")
-    print(f"APP_VERSION -> {app_ver}, sw cache -> shoeschool-{sw_ver}, {len(asset_list())} assets")
+    APP.write_text(app_text, encoding="utf-8", newline=LF)
+    SW.write_text(sw_text, encoding="utf-8", newline=LF)
+    code = bump_android(app_ver)
+    android = f", Android {app_ver} (versionCode {code})" if code else ""
+    print(f"APP_VERSION -> {app_ver}, sw cache -> shoeschool-{sw_ver}, {len(asset_list())} assets{android}")
 
 
 if __name__ == "__main__":

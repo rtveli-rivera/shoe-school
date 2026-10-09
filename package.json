@@ -12,7 +12,8 @@
     "sync-web": "node scripts/sync-web.mjs",
     "sync": "npm run sync-web && cap sync android",
     "open:android": "cap open android",
-    "build:apk": "npm run sync-web && cap sync android && node scripts/build-apk.mjs"
+    "build:apk": "npm run sync-web && cap sync android && node scripts/build-apk.mjs",
+    "build:apk:debug": "npm run sync-web && cap sync android && node scripts/build-apk.mjs --debug"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

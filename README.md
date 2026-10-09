@@ -58,18 +58,36 @@ changing the engine or presets run `npm run build:charts`.
 
 ## Install it on a phone
 
-**Android APK** (works fully offline, no hosting):
+**Android app (APK)**: works fully offline. Share this link; it always points
+at the newest version:
+
+**https://github.com/rtveli-rivera/shoe-school/releases/latest/download/shoe-school.apk**
+
+1. Open the link on the Android phone and download the file.
+2. Tap the downloaded file. Android asks to allow installs from this source
+   (Chrome or Files): **Settings → Allow from this source**, then go back.
+3. Tap **Install**. If Google Play Protect asks to scan the app, let it scan;
+   if it says the app is unknown, choose **More details → Install anyway**.
+
+Updates: download the new APK from the same link and install it over the old
+one. Progress is kept.
+
+iPhones cannot install APKs; use the web version below.
+
+*Building it* (needs JDK 17 and the Android SDK, both set up on this PC):
 
 ```
-npm install          # once
-npm run build:apk    # -> dist/shoe-school.apk
+npm install              # once
+npm run build:apk        # signed release -> dist/shoe-school.apk (the one to share)
+npm run build:apk:debug  # debug build -> dist/shoe-school-debug.apk
 ```
 
-(Needs JDK 17 and the Android SDK, both already set up on this PC. `npm run
-icons` regenerates the launcher icons and splash screen from `icons/icon.svg`.)
-
-Copy `dist/shoe-school.apk` to the phone and open it (allow "install unknown apps"
-for your file manager once).
+The release key is **not in this repo**. It lives in
+`%USERPROFILE%\.android\shoe-school-release.jks` with its passwords in
+`shoe-school-signing.properties` next to it. **Back up both files.** Without them
+you can still build, but phones will refuse to install the new APK over the old one
+(people would have to uninstall first and lose their progress).
+`npm run icons` regenerates the launcher icons and splash screen from `icons/icon.svg`.
 
 **PWA** (any phone): open https://rtveli-rivera.github.io/shoe-school/ on the phone.
 - **Android (Chrome):** ⋮ menu → **Install app** / Add to Home Screen.
@@ -81,12 +99,14 @@ per device (Settings → Save backup to move it).
 ### Releasing an update
 
 ```
-py bump.py           # bumps the version + the offline cache, regenerates the file list
+py bump.py           # bumps the app + Android version and the offline cache, regenerates the file list
 ```
 
 Then `git commit -am "release"` and `git push`: GitHub Pages redeploys the same URL
 within a minute, and installed copies show an "Update" banner. For Android, also
-`npm run build:apk`.
+`npm run build:apk` and attach `dist/shoe-school.apk` (keep that exact file name)
+to a new GitHub release tagged with the version, e.g. `v0.1.1`. The download link
+above then serves it automatically.
 
 ## Layout
 
