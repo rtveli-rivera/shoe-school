@@ -14,8 +14,8 @@ android {
         applicationId "com.shoeschool.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1          // bump.py raises this on every release
-        versionName "0.1.0"    // bump.py keeps this equal to APP_VERSION in js/app.js
+        versionCode 2          // bump.py raises this on every release
+        versionName "0.1.1"    // bump.py keeps this equal to APP_VERSION in js/app.js
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

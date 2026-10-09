@@ -1,5 +1,5 @@
 // app.js — the shell: hash router, the game-rules chip, offline updates.
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.1.1';
 export { APP_VERSION };
 
 import { el, clear, modal } from './ui.js';

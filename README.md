@@ -22,7 +22,7 @@ your browser. Needs Python, which is used only as a static file server.
 |---|---|
 | **Learn** | 8 gated modules: the game → basic strategy → casino rules & variants → counting → index plays → betting & bankroll → casino survival → the simulator. Each ends in a checkpoint drill; passing opens the next. |
 | **Train** | 14 drills: hand totals, dealer rules, payouts, strategy flashcards (missed cells come back), full hands, rule changes, card tags, pairs, deck countdown, running count, deck estimation from the discard tray, true count, index plays, bet ramp. |
-| **Casino** | A full table: other players, your bets on your ramp, your plays (index plays at the live count), insurance, random count checks, face-up or pitch dealing. Practice mode corrects on the spot; the 50-round test-out grades silently. |
+| **Casino** | A full table: other players, your bets on your ramp, your plays (index plays at the live count), insurance, random count checks, face-up or pitch dealing. Practice mode corrects on the spot; the 50-round test-out grades silently. The summary charts luck vs skill: your result against what your play was worth (bets × the edge at each count, minus what each mistake cost), inside the band of normal luck. |
 | **Charts** | The strategy chart for any game, with what every play is worth (tap a cell); the index plays; house edge by game. |
 | **More** | Bankroll & risk tools (simulate your game + ramp: win per hour, risk of ruin, N0, SCORE, edge at each true count), glossary, settings, backup. |
 

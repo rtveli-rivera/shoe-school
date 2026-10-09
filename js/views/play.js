@@ -19,6 +19,8 @@ import { trueCount } from '../engine/hilo.js';
 import { mulberry32, randomSeed } from '../engine/rng.js';
 import { loadLessons } from '../game/content.js';
 import { openGamePicker } from '../app.js';
+import { analyzeSession, luckVerdict } from '../game/sessionvalue.js';
+import { sessionChart, sessionLegend, ACTUAL, EXPECTED } from '../game/linechart.js';
 
 const TEST_ROUNDS = 50;
 
@@ -76,6 +78,10 @@ async function runTable(root, presetId, mode, query, navigate) {
   let net = 0;
   const stats = { decisions: 0, errors: 0, bets: 0, betErrors: 0, counts: 0, countErrors: 0, insurance: 0, insuranceErrors: 0 };
   const mistakes = [];
+  // per finished round, for the luck-vs-skill chart: { bet, tc, net, mistakes }
+  const rounds = [];
+  let cur = null;          // the round in play
+  const where = () => ({ tc: table.tcExact, decks: table.decksLeftExact });
   let nextCheck = 3 + Math.floor(rand() * 3);
 
   // ---- layout ----
@@ -171,7 +177,12 @@ async function runTable(root, presetId, mode, query, navigate) {
         const c = choiceButtons(opts, (val) => {
           c.lock();
           const ok = val === right || val === rightAlt;
-          stats.insurance++; if (!ok) { stats.insuranceErrors++; logMistake('insurance', `Insurance at TC ${fmtSigned(tc.est)}: should ${right ? 'take' : 'decline'}`); }
+          stats.insurance++;
+          if (!ok) {
+            stats.insuranceErrors++;
+            logMistake('insurance', `Insurance at TC ${fmtSigned(tc.est)}: should ${right ? 'take' : 'decline'}`);
+            cur?.mistakes.push({ kind: 'insurance', took: val, bet: seat.hands[0].bet, ...where() });
+          }
           practiceNote(ok, ok ? '✓ Insurance decision right.' : `✗ At true count ${fmtSigned(tc.est)} you should **${right ? 'take' : 'decline'}** insurance (take it at +3 or more).`);
           resolve(val);
         });
@@ -200,6 +211,10 @@ async function runTable(root, presetId, mode, query, navigate) {
             stats.errors++;
             const why = res.source === 'deviation' ? ` (index play: ${res.deviation?.label || 'deviation'})` : ` (chart: ${CODE_TEXT[res.code] || res.code})`;
             logMistake('play', `${cardsValue(hand.cards).soft ? 'soft ' : ''}${cardsValue(hand.cards).total} vs ${dealerRanks[0] === 1 ? 'A' : dealerRanks[0]} at TC ${fmtSigned(tc.est)}: you ${ACTIONS[picked].label.toLowerCase()}, right is **${ACTIONS[res.action].label}**${why}`);
+            cur?.mistakes.push({
+              kind: 'play', table: res.table, row: res.row, col: res.col, up: dealerRanks[0],
+              chosen: picked, right: res.action, bet: hand.bet, chart: de ? de.getDEChart(rules) : null, ...where(),
+            });
             practiceNote(false, `✗ **${ACTIONS[res.action].label}**${why}. Playing your choice.`);
           } else {
             practiceNote(true, res.source === 'deviation' ? `✓ Index play: ${res.deviation?.label || ''}` : '✓');
@@ -219,8 +234,13 @@ async function runTable(root, presetId, mode, query, navigate) {
       const shown = el('div', { class: 'result-big num', style: { fontSize: '34px' } });
       const paintBet = () => { shown.textContent = `${bet}u · $${bet * st.unitSize}`; };
       const chip = (u, cls) => el('button', { class: `chipbtn ${cls}`, type: 'button', onclick: () => { bet = Math.min(bet + u, 40); paintBet(); } }, `+${u}`);
+      let placed = false;
       const deal = () => {
+        // one bet per round: a double tap or a held Enter must not count twice
+        if (placed) return;
+        placed = true;
         document.removeEventListener('keydown', onKey);
+        controls.replaceChildren(el('p', { class: 'felt-msg', style: { color: 'var(--muted)' } }, 'Dealing…'));
         const right = unitsFor(ramp, tc.est);
         const rightAlt = unitsFor(ramp, tc.exact);
         const ok = bet === right || bet === rightAlt;
@@ -228,6 +248,7 @@ async function runTable(root, presetId, mode, query, navigate) {
         if (!ok) { stats.betErrors++; logMistake('bet', `Bet ${bet}u at TC ${fmtSigned(tc.est)}: the ramp says **${right}u**`); }
         practiceNote(ok, ok ? `✓ Bet right for true count ${fmtSigned(tc.est)}.` : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**.`);
         lastBet = bet;
+        cur = { bet, tc: table.tcExact, net: 0, mistakes: [] };
         resolve(bet);
       };
       const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); deal(); } };
@@ -290,12 +311,48 @@ async function runTable(root, presetId, mode, query, navigate) {
       completed++;
       const mine = result.results?.find((r) => r.me);
       if (mine) net += mine.net;
+      if (cur) { cur.net = mine ? mine.net : 0; rounds.push(cur); cur = null; }
       paint();
       controls.replaceChildren(el('p', { class: 'felt-msg', style: { color: 'var(--muted)' } },
         !mine ? '' : mine.net > 0 ? `You win ${mine.net}u` : mine.net < 0 ? `You lose ${-mine.net}u` : 'Push'));
       await sleep(1000 / speed);
       if (mode === 'test' && round >= TEST_ROUNDS) { endSession('done'); return; }
     }
+  }
+
+  // Result vs what the play was worth, with the normal range of luck around it.
+  function luckCard() {
+    if (rounds.length < 2) return null;
+    const { points, totals: t } = analyzeSession(rounds, { presetId, rules, houseEdge: safeHouseEdge() });
+    const usd = (u) => `${u < 0 ? '−' : ''}$${Math.abs(u * st.unitSize).toFixed(Math.abs(u * st.unitSize) < 100 ? 2 : 0)}`;
+    const u1 = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}u`;
+    const tile = (label, value, sub, color) => el('div', { class: 'card tight', style: { marginBottom: 0 } },
+      el('div', { class: 'muted', style: { fontSize: '13px' } },
+        color ? el('span', { style: { display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: color, marginRight: '6px' } }) : null, label),
+      el('div', { class: 'num', style: { fontSize: '22px', fontWeight: 800 } }, value),
+      el('div', { class: 'faint', style: { fontSize: '12px' } }, sub));
+    const chartBox = el('div');
+    const box = el('div', { class: 'card' },
+      el('h3', { style: { marginTop: 0 } }, 'Luck or skill?'),
+      el('div', { class: 'grid2', style: { gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', marginBottom: '12px' } },
+        tile('Your result', u1(t.actual), usd(t.actual), ACTUAL),
+        tile('Your play was worth', u1(t.expected), `bets ${u1(t.betValue)} · mistakes −${Math.abs(t.mistakeCost).toFixed(1)}u`, EXPECTED),
+        tile('Luck', u1(t.luck), `normal range ±${t.sd.toFixed(0)}u`)),
+      el('p', { style: { margin: '0 0 8px' } }, `Your luck this session was ${luckVerdict(t.z)}.`),
+      sessionLegend(), chartBox,
+      el('p', { class: 'faint', style: { fontSize: '12px', margin: '8px 0 0' } },
+        '“Worth” is each bet times the edge at the count you bet at, minus what each mistake cost at its count, both from the strategy engine. The shaded band is ordinary luck (one and two standard deviations). Over a few hundred rounds luck is far bigger than skill; that is why counters judge themselves by accuracy, not results.'));
+    // the chart needs the card's real width, so draw it once the card is on screen
+    requestAnimationFrame(() => {
+      const w = Math.min(chartBox.clientWidth || 320, 720);
+      chartBox.replaceChildren(sessionChart(points, { width: w, height: 230, money: usd }));
+    });
+    return box;
+  }
+
+  // percent; only used where tcedges.js has no table (Double Exposure, custom rules)
+  function safeHouseEdge() {
+    try { return de ? de.houseEdgeDE(rules) : s.houseEdge(rules); } catch { return 0.5; }
   }
 
   async function endSession(why) {
@@ -335,9 +392,9 @@ async function runTable(root, presetId, mode, query, navigate) {
         el('span', {}, 'Bets on the ramp'), el('span', { class: 'v' }, show(stats.bets, stats.betErrors)),
         el('span', {}, 'Count checks'), el('span', { class: 'v' }, show(stats.counts, stats.countErrors)),
         el('span', {}, 'Overall'), el('span', { class: 'v' }, total ? fmtPct(overall * 100, 1) : '—'))),
+      luckCard(),
       mistakes.length ? el('div', { class: 'card' }, el('h3', { style: { marginTop: 0 } }, 'Every mistake'),
         el('div', { class: 'log', style: { maxHeight: 'none' } }, mistakes.map((m) => el('div', { class: 'bad', html: mdInline(`R${m.round} · ${m.text}`) })))) : el('p', { class: 'muted' }, 'No mistakes. 👏'),
-      el('p', { class: 'faint', style: { fontSize: '13px' } }, 'The units won or lost are luck over a few rounds; only the accuracy numbers say anything about you.'),
       el('div', { class: 'row' },
         el('button', { class: 'btn primary', type: 'button', onclick: () => navigate(`#/play?preset=${presetId}&mode=${mode}${query.checkpoint ? `&checkpoint=${query.checkpoint}` : ''}&r=${Date.now()}`) }, 'Play again'),
         el('a', { class: 'btn', href: '#/play?setup=1' }, 'Change table'),
