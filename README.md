@@ -31,8 +31,10 @@ dealing, and Double Exposure (its own chart).
 
 - **Strategy charts are computed, not copied.** `js/engine/` is an exact
   combinatorial analysis of the shoe for each rule set (cards drawn without
-  replacement, total-dependent basic strategy). Every chart was then compared
-  cell by cell with published charts; see `docs/VALIDATION.md`.
+  replacement, total-dependent basic strategy). Checked against the Wizard of
+  Odds tables: 28,787 of 28,800 cells match over 80 rule sets, with every
+  difference explained. House edges match published figures within 0.0075% over
+  60 rule sets. Details in `docs/VALIDATION.md`.
 - **Two independent implementations agree.** The Monte Carlo simulator
   (`js/engine/sim.js`) deals real cards; with flat bets and basic strategy it
   reproduces the engine's house edge for every game type (`test/sim.test.mjs`).
@@ -45,19 +47,23 @@ dealing, and Double Exposure (its own chart).
 npm test
 ```
 
-Node 24's built-in runner, no packages needed. Seeds and round counts are fixed,
-so results are deterministic.
+53 tests on Node 24's built-in runner, no packages needed (about 30 s). Seeds
+and round counts are fixed, so results are deterministic.
+
+After editing `docs/SOURCES.md` run `node scripts/build-sources.mjs`; after
+changing the engine or presets run `npm run build:charts`.
 
 ## Install it on a phone
 
 **Android APK** (works fully offline, no hosting):
 
 ```
-npm install
-npm run icons        # once: Android launcher icons from icons/icon.svg
-npx cap add android  # once: creates android/
+npm install          # once
 npm run build:apk    # -> dist/shoe-school.apk
 ```
+
+(Needs JDK 17 and the Android SDK, both already set up on this PC. `npm run
+icons` regenerates the launcher icons and splash screen from `icons/icon.svg`.)
 
 Copy `dist/shoe-school.apk` to the phone and open it (allow "install unknown apps"
 for your file manager once).
