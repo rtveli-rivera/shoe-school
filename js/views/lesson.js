@@ -1,6 +1,7 @@
 // lesson.js — renders one lesson from its blocks (format: SPEC.md, js/data/lessons.js).
 
-import { el, md, mdInline, fmtPct } from '../ui.js';
+import { el, mdInline as mdBase, fmtPct } from '../ui.js';
+import { SOURCES } from '../data/sources.js';
 import { markLesson, lessonDone, moduleUnlocked } from '../store.js';
 import { findLesson } from '../game/content.js';
 import { cardEl } from '../game/cards.js';
@@ -8,6 +9,11 @@ import { chartFor, strategy, doubleExposure, currentPresetId, CODE_TEXT, rowLabe
 import { chartTable, chartLegend, chartDiff, evBreakdown } from '../game/chartview.js';
 import { rulesFor, presetById } from '../engine/rules.js';
 import { checkpointHref } from './learn.js';
+
+// Lesson text: the markdown subset, with inline source keys (`woo-rules`) shown as citations.
+const cite = (k) => SOURCES[k] || null;
+const mdInline = (src) => mdBase(src, { cite });
+const md = (tag, src, attrs = {}) => el(tag, { ...attrs, html: mdInline(src) });
 
 export async function render(root, { args }) {
   const found = await findLesson(args[0]);

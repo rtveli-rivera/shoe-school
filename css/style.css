@@ -379,3 +379,10 @@ details.more summary { cursor: pointer; color: var(--gold); min-height: 36px; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* inline source citations in lessons */
+.cite {
+  display: inline-block; font-size: 11px; line-height: 1.5; padding: 0 7px; border-radius: 999px; vertical-align: 1px;
+  border: 1px solid var(--line); color: var(--muted); text-decoration: none; background: var(--bg-2); white-space: nowrap;
+}
+a.cite:hover { color: var(--gold); border-color: var(--gold-2); }

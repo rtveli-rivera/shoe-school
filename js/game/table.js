@@ -133,6 +133,7 @@ export class Table {
         const hand = s.hands[h];
         if (hand.natural && s.hands.length === 1) { hand.done = true; this.seeSeatHand(s, hand, 'natural'); continue; }
         this.activeSeat = s; this.activeHand = h;
+        io.update();
         await this.playHand(io, s, hand, h);
         io.update();
       }

@@ -23,7 +23,7 @@ export function mount(stage, ctx) {
       el('p', { class: 'muted' }, removed ? `${removed} card${removed > 1 ? 's are' : ' is'} secretly removed before you start, so the count will not end at 0. Your final count is what the missing cards would have cancelled.` : 'A complete deck always counts back to 0. If you do not end at 0, you slipped somewhere.'),
       params.removed === undefined ? el('div', { class: 'field' }, el('span', { class: 'label' }, 'Cards removed'), seg([0, 1, 3], removed, (v) => { removed = v; }, (v) => String(v))) : null,
       el('div', { class: 'field' }, el('span', { class: 'label' }, 'Cards per flip'), seg([1, 2], perFlip, (v) => { perFlip = v; }, (v) => v === 1 ? 'One at a time' : 'Two at a time (pairs)')),
-      el('p', { class: 'faint', style: { fontSize: '14px' } }, 'Targets for one deck: under 30 seconds is table-ready; under 20 is very good.'),
+      el('p', { class: 'faint', style: { fontSize: '14px' } }, 'Targets for one deck: under 30 seconds is table-ready, under 25 is good, under 20 is excellent.'),
       el('button', { class: 'btn primary block', type: 'button', onclick: run }, 'Start'),
     ));
   };
@@ -61,7 +61,7 @@ export function mount(stage, ctx) {
           const ok = val === expected;
           ctx.report(ok);
           const removedText = removed ? ` The removed card${removed > 1 ? 's were' : ' was'} ${hiddenOut.map(cardText).join(' ')}.` : '';
-          feedback(fb, ok, `${ok ? '' : `The count was **${fmtSigned(expected)}**. `}Time: **${fmtMs(ms)}**${ms < 20000 ? ' (excellent)' : ms < 30000 ? ' (table-ready)' : ' (keep practising: aim for under 30s)'}.${removedText}`,
+          feedback(fb, ok, `${ok ? '' : `The count was **${fmtSigned(expected)}**. `}Time: **${fmtMs(ms)}**${ms < 20000 ? ' (excellent)' : ms < 25000 ? ' (good)' : ms < 30000 ? ' (table-ready)' : ' (keep practising: aim for under 30s)'}.${removedText}`,
             () => ctx.advance(run), { autoMs: -1 });
         },
       });

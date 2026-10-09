@@ -52,9 +52,16 @@ const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;
 export function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ESC[c]); }
 
 // The lesson markdown subset: **bold**, *italic*, `code`. Everything else is text.
-export function mdInline(src) {
+// opts.cite(key) -> { label, url } turns `source-key` code spans into citation links.
+export function mdInline(src, opts = {}) {
   let s = escapeHtml(src ?? '');
-  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/`([^`]+)`/g, (m, k) => {
+    const c = opts.cite && opts.cite(k);
+    if (!c) return `<code>${k}</code>`;
+    return c.url
+      ? `<a class="cite" href="${escapeHtml(c.url)}" target="_blank" rel="noopener" title="Source: ${escapeHtml(c.label)}">${escapeHtml(c.label)}</a>`
+      : `<span class="cite" title="Source">${escapeHtml(c.label)}</span>`;
+  });
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, '$1<em>$2</em>');
   return s;

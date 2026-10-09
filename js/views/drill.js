@@ -36,7 +36,7 @@ export async function render(root, { args, query, navigate }) {
 
   const presetId = params.preset || settings().preset;
   const rules = rulesFor(presetId);
-  const target = checkpoint?.pass?.items || params.items || meta.items || 20;
+  const target = checkpoint?.pass?.items || params.items || params.count || meta.items || 20;
   const mod = await import(`../drills/${id}.js`);
 
   let items = 0, correct = 0, t0 = null, done = false, cleanup = null, tick = null;

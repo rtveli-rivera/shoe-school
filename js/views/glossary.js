@@ -1,6 +1,7 @@
 // glossary.js — searchable list of terms.
 
 import { el, mdInline } from '../ui.js';
+import { SOURCES } from '../data/sources.js';
 import { loadGlossary } from '../game/content.js';
 
 export async function render(root) {
@@ -9,7 +10,7 @@ export async function render(root) {
   const paint = (q) => {
     const f = q.trim().toLowerCase();
     const shown = terms.filter((t) => !f || t.term.toLowerCase().includes(f) || t.def.toLowerCase().includes(f));
-    list.replaceChildren(...shown.map((t) => el('div', { class: 'card tight' }, el('b', {}, t.term), el('div', { class: 'muted', style: { fontSize: '14px' }, html: mdInline(t.def) }))),
+    list.replaceChildren(...shown.map((t) => el('div', { class: 'card tight' }, el('b', {}, t.term), el('div', { class: 'muted', style: { fontSize: '14px' }, html: mdInline(t.def, { cite: (k) => SOURCES[k] || null }) }))),
       shown.length ? '' : el('p', { class: 'muted' }, 'No term matches.'));
   };
   root.append(el('h1', {}, 'Glossary'),

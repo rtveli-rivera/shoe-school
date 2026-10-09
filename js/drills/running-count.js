@@ -24,8 +24,11 @@ export function mount(stage, ctx) {
     }, v.label)));
     stage.replaceChildren(el('div', { class: 'card' },
       el('p', {}, `About ${length} cards will flash past in groups, like hands landing on the table. Keep the running count; you will be asked for it at the end.`),
-      el('div', { class: 'field' }, el('span', { class: 'label' }, 'Speed per group'), seg(SPEEDS.map((s) => ({ label: `${s.label} · ${s.ms / 1000}s`, value: s.ms })), speed, (v) => { speed = v; })),
-      el('div', { class: 'field' }, el('span', { class: 'label' }, 'Cards per group'), seg([1, 2, 3].map((n) => ({ label: String(n), value: n })), group, (v) => { group = v; })),
+      // a lesson or checkpoint that sets the speed / group size fixes it
+      params.speed ? el('p', { class: 'muted' }, `Speed: ${speed / 1000}s per group of ${group}.`)
+        : el('div', { class: 'field' }, el('span', { class: 'label' }, 'Speed per group'), seg(SPEEDS.map((s) => ({ label: `${s.label} · ${s.ms / 1000}s`, value: s.ms })), speed, (v) => { speed = v; })),
+      params.group ? null
+        : el('div', { class: 'field' }, el('span', { class: 'label' }, 'Cards per group'), seg([1, 2, 3].map((n) => ({ label: String(n), value: n })), group, (v) => { group = v; })),
       el('button', { class: 'btn primary block', type: 'button', onclick: run }, 'Start'),
     ));
   };

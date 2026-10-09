@@ -71,7 +71,8 @@ async function runTable(root, presetId, mode, query, navigate) {
   let alive = true;
   let showCount = mode === 'practice' && st.showCount;
   let lastBet = 1;
-  let round = 0;
+  let round = 0;          // rounds started (the HUD shows the one in play)
+  let completed = 0;      // rounds finished (the summary counts these)
   let net = 0;
   const stats = { decisions: 0, errors: 0, bets: 0, betErrors: 0, counts: 0, countErrors: 0, insurance: 0, insuranceErrors: 0 };
   const mistakes = [];
@@ -87,7 +88,7 @@ async function runTable(root, presetId, mode, query, navigate) {
     el('div', { class: 'row between', style: { marginBottom: '8px' } },
       el('button', { class: 'btn small ghost', type: 'button', onclick: () => endSession('exit') }, '✕ Leave table'),
       el('span', { class: 'pill gold' }, `${presetById(presetId).short} · ${mode === 'test' ? 'TEST-OUT' : 'practice'}`)),
-    hud, el('div', { style: { height: '8px' } }), felt, controls, note,
+    hud, el('div', { style: { height: '8px' } }), felt, note, controls,
     mode === 'practice' ? el('details', { class: 'more card tight', style: { marginTop: '12px' } }, el('summary', {}, 'Mistakes this session'), logBox) : null,
   );
 
@@ -149,7 +150,7 @@ async function runTable(root, presetId, mode, query, navigate) {
 
   function practiceNote(ok, text) {
     if (mode !== 'practice') return;
-    note.replaceChildren(el('div', { class: `feedback ${ok ? 'good' : 'bad'}`, html: mdInline(text) }));
+    note.replaceChildren(el('div', { class: `feedback ${ok ? 'good' : 'bad'}`, style: { margin: '8px 0 0', padding: '8px 12px' }, html: mdInline(text) }));
   }
 
   // ---- the io the table calls ----
@@ -286,6 +287,7 @@ async function runTable(root, presetId, mode, query, navigate) {
       round++;
       const result = await table.playRound(io);
       if (!alive) return;
+      completed++;
       const mine = result.results?.find((r) => r.me);
       if (mine) net += mine.net;
       paint();
@@ -300,8 +302,9 @@ async function runTable(root, presetId, mode, query, navigate) {
     if (!alive) return;
     alive = false;
     document.body.classList.remove('fullscreen');
-    recordSim({ rounds: round, decisions: stats.decisions, errors: stats.errors, betErrors: stats.betErrors, countChecks: stats.counts, countErrors: stats.countErrors });
+    recordSim({ rounds: completed, decisions: stats.decisions, errors: stats.errors, betErrors: stats.betErrors, countChecks: stats.counts, countErrors: stats.countErrors });
     const part = (n, e) => (n ? (n - e) / n : 1);
+    const show = (n, e) => (n ? `${fmtPct(part(n, e) * 100, 1)} (${n - e}/${n})` : '—');
     const playAcc = part(stats.decisions + stats.insurance, stats.errors + stats.insuranceErrors);
     const betAcc = part(stats.bets, stats.betErrors);
     const countAcc = part(stats.counts, stats.countErrors);
@@ -325,13 +328,13 @@ async function runTable(root, presetId, mode, query, navigate) {
     }
     root.replaceChildren(
       el('div', { class: 'kicker' }, mode === 'test' ? 'Test-out results' : 'Session summary'),
-      el('h1', {}, `${round} round${round === 1 ? '' : 's'} · ${fmtSigned(net)} units`),
+      el('h1', {}, `${completed} round${completed === 1 ? '' : 's'} · ${fmtSigned(net)} units`),
       verdict,
       el('div', { class: 'card' }, el('div', { class: 'kv' },
-        el('span', {}, 'Playing decisions'), el('span', { class: 'v' }, `${fmtPct(playAcc * 100, 1)} (${stats.decisions + stats.insurance - stats.errors - stats.insuranceErrors}/${stats.decisions + stats.insurance})`),
-        el('span', {}, 'Bets on the ramp'), el('span', { class: 'v' }, `${fmtPct(betAcc * 100, 1)} (${stats.bets - stats.betErrors}/${stats.bets})`),
-        el('span', {}, 'Count checks'), el('span', { class: 'v' }, `${fmtPct(countAcc * 100, 1)} (${stats.counts - stats.countErrors}/${stats.counts})`),
-        el('span', {}, 'Overall'), el('span', { class: 'v' }, fmtPct(overall * 100, 1)))),
+        el('span', {}, 'Playing decisions'), el('span', { class: 'v' }, show(stats.decisions + stats.insurance, stats.errors + stats.insuranceErrors)),
+        el('span', {}, 'Bets on the ramp'), el('span', { class: 'v' }, show(stats.bets, stats.betErrors)),
+        el('span', {}, 'Count checks'), el('span', { class: 'v' }, show(stats.counts, stats.countErrors)),
+        el('span', {}, 'Overall'), el('span', { class: 'v' }, total ? fmtPct(overall * 100, 1) : '—'))),
       mistakes.length ? el('div', { class: 'card' }, el('h3', { style: { marginTop: 0 } }, 'Every mistake'),
         el('div', { class: 'log', style: { maxHeight: 'none' } }, mistakes.map((m) => el('div', { class: 'bad', html: mdInline(`R${m.round} · ${m.text}`) })))) : el('p', { class: 'muted' }, 'No mistakes. 👏'),
       el('p', { class: 'faint', style: { fontSize: '13px' } }, 'The units won or lost are luck over a few rounds; only the accuracy numbers say anything about you.'),
