@@ -1,0 +1,8 @@
+{
+  "appId": "com.shoeschool.app",
+  "appName": "Shoe School",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0a1a13"
+  }
+}

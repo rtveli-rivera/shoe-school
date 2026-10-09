@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Shoe School — Blackjack & Card Counting</title>
+  <meta name="description" content="Learn blackjack from zero: perfect basic strategy, every casino variant, and Hi-Lo card counting, with drills and a casino simulator.">
+  <meta name="theme-color" content="#0b1f17">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <a class="brand" href="#/learn" aria-label="Shoe School home">
+        <span class="brand-mark" aria-hidden="true">♠</span>
+        <span class="brand-name">Shoe School</span>
+      </a>
+      <button id="game-chip" class="chip" type="button" title="The casino rules you are training for">…</button>
+    </header>
+    <div id="update-banner" class="banner hidden" role="status"></div>
+    <main id="view" tabindex="-1"></main>
+    <nav id="nav" aria-label="Main">
+      <a href="#/learn" data-tab="learn"><span class="ico" aria-hidden="true">🎓</span><span>Learn</span></a>
+      <a href="#/train" data-tab="train"><span class="ico" aria-hidden="true">🎯</span><span>Train</span></a>
+      <a href="#/play" data-tab="play"><span class="ico" aria-hidden="true">🃏</span><span>Casino</span></a>
+      <a href="#/charts" data-tab="charts"><span class="ico" aria-hidden="true">📋</span><span>Charts</span></a>
+      <a href="#/more" data-tab="more"><span class="ico" aria-hidden="true">☰</span><span>More</span></a>
+    </nav>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

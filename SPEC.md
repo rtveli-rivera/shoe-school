@@ -1,0 +1,210 @@
+# Shoe School — build spec
+
+An offline-first training app that takes someone who has never played blackjack
+to counting cards accurately at a real casino table. It's modelled on the
+*teaching approach* of apps like Blackjack Apprenticeship, with its own name,
+text and look.
+
+## The brief (agreed with the owner, 2026-10-08)
+
+- **Platform:** a no-build static PWA (vanilla HTML/CSS/JS ES modules), installable and
+  fully offline, plus an Android APK through Capacitor, the same pattern as the
+  owner's Georgian Tutor and Plant Tracker apps. The APK bundles the web files
+  (`webDir: www`), so it needs no hosting to work.
+- **Counting system:** Hi-Lo, with the Illustrious 18 and Fab 4 index plays. One system,
+  taught very well.
+- **Games covered:** 1/2/4/6/8 decks, H17/S17, DAS, double restrictions, late
+  surrender, resplits, 3:2 vs 6:5, European no-hole-card, penetration, **face-up vs
+  face-down (pitch) dealing** (the face-up double-deck game is the "easiest to count"
+  one the owner had in mind), and **Double Exposure** (both dealer cards face up: its
+  own strategy chart).
+- **Extras chosen:** a casino simulator (full table, graded), bankroll and risk tools,
+  and casino survival (camouflage, heat, backoffs).
+- **Not chosen:** streaks and gamification. Progress is only module unlocks plus
+  accuracy history.
+
+## Curriculum (gated)
+
+Each module ends in a checkpoint drill with a stated pass mark. Passing it
+unlocks the next module. Settings has "I already know this, unlock everything".
+
+1. **The game:** hand values, dealer rules, actions, payouts, table flow, hand signals.
+2. **Basic strategy:** the chart for your rules; flashcards that repeat missed cells; full hands with correction.
+3. **Casino rules & variants:** each rule's house-edge effect and exactly which cells it changes; face-up vs pitch; ENHC; Double Exposure.
+4. **Counting:** tags, running count, deck countdown, deck estimation, true count.
+5. **Index plays:** insurance, the Illustrious 18, the Fab 4.
+6. **Betting & bankroll:** bet ramp, units, risk of ruin, win rate, why 6:5 and poor penetration kill the game.
+7. **Casino survival:** camouflage, heat, backoffs, the law, table etiquette for counters.
+8. **Casino simulator:** everything together at speed, then a test-out.
+
+## Correctness policy — the most important rule
+
+- The strategy charts are **computed by the app's own engine** (combinatorial EV per
+  rule set, `js/engine/`), then **checked against published charts** (Wizard of Odds
+  and others). Any disagreement is written up in `docs/VALIDATION.md`, never hidden
+  or patched over.
+- Index plays (I18 / Fab 4) are published, simulation-derived numbers. They are taken
+  from cited sources (`docs/SOURCES.md`), separately for S17 and H17, and
+  cross-checked between sources.
+- Every factual number in the lessons (house edges, rule effects, advantage per true
+  count, risk of ruin) must be computed by the engine or traceable to a source in
+  `docs/SOURCES.md`.
+- **No copying.** Don't copy Blackjack Apprenticeship's text, images, charts-as-images,
+  course structure wording or branding. Charts and indices are facts and are fine;
+  prose is written fresh.
+
+## Tech constraints
+
+- No build step and no runtime dependencies. ES modules loaded directly by `index.html`.
+- `js/engine/**` and `js/data/**` are **pure**: no DOM and no Node APIs, so the browser,
+  the Node tests and the scripts import the same files.
+- Tests: `node --test test/` (Node 24 built-in runner, no packages). Tests use fixed
+  seeds and work counts, never the wall clock.
+- Data that ships to the browser is a JS module (`export const X = …`), not JSON, so it
+  loads with a plain `import` everywhere.
+- Mobile-first: everything must work at 360 px wide, with touch targets of at least 44 px.
+- Progress is stored in `localStorage` under the key `shoeschool.v1`, wrapped in try/catch.
+
+## Layout
+
+```
+index.html  manifest.webmanifest  sw.js  start.bat  bump.py  README.md
+package.json  capacitor.config.json            (Capacitor, dev-only)
+css/style.css
+js/app.js                     shell + hash router
+js/ui.js                      DOM helpers
+js/store.js                   progress + settings (localStorage)
+js/engine/rules.js            DONE — rule model, presets, chartKey, handValue
+js/engine/hilo.js             DONE — tags, running/true count, deck estimation
+js/engine/shoe.js             composition helpers (engine)
+js/engine/dealer.js           dealer outcome probabilities
+js/engine/ev.js               player EVs, house edge
+js/engine/strategy.js         chart generation + decide()   <- the main engine API
+js/engine/de.js               Double Exposure chart + decide
+js/engine/sim.js              Monte Carlo play (bankroll tools)
+js/engine/risk.js             risk of ruin, N0, SCORE, hours
+js/engine/rng.js              seeded PRNG (mulberry32) used by sim + drills
+js/data/charts.js             GENERATED by scripts/build-charts.mjs
+js/data/deviations.js         I18 + Fab 4 + insurance, S17 and H17
+js/data/lessons.js            the curriculum text
+js/data/glossary.js           terms
+js/game/                      table model, card rendering (UI side)
+js/drills/                    one file per drill
+js/views/                     one file per screen
+scripts/build-charts.mjs      precomputes every chart the app ships
+test/*.test.mjs
+docs/VALIDATION.md  docs/SOURCES.md
+```
+
+## Contract: the strategy engine (`js/engine/strategy.js`)
+
+Ranks: 1 = Ace, 2..9, 10 = ten-value. Upcard keys: `'2'..'10','A'`.
+
+```js
+getChart(rules) -> Chart          // sync; precomputed when chartKey(rules) is in CHARTS, else computed
+Chart = {
+  key, rules,
+  hard:  { [total 4..21]: { [up]: Code } },
+  soft:  { [total 12..21]: { [up]: Code } },   // 12 = A,A when not split
+  pairs: { ['2'..'10','A']: { [up]: Code } },
+  ev:    { hard|soft|pairs: { [row]: { [up]: { stand, hit, double?, split?, surrender? } } } },
+  houseEdge,      // percent of the initial bet, + = house, for these rules incl. bjPays
+  method,         // short text: how it was computed (for the "why" screen)
+}
+Code: 'S' stand | 'H' hit | 'D' double, else hit | 'Ds' double, else stand
+      'P' split | 'Ph' split if DAS, else hit | 'Rh' surrender, else hit
+      'Rs' surrender, else stand | 'Rp' surrender, else split
+
+decide(hand, up, rules, opts) -> {
+  action: 'hit'|'stand'|'double'|'split'|'surrender'|'insurance-no'|...,
+  code,                    // the chart cell
+  source: 'basic'|'deviation',
+  deviation,               // the deviations.js entry used, if any
+  table, row,              // where in the chart ('hard', '16')
+}
+  hand: engine ranks, e.g. [10, 6]; up: engine rank
+  opts: { canDouble, canSplit, canSurrender, splitCount, tc /* number|undefined */,
+          indexSet: 'none'|'i18'|'i18fab4' }
+takeInsurance(tc, rules) -> boolean
+houseEdge(rules) -> number
+```
+
+`decide()` resolves a code against what's allowed (a double after three cards
+becomes hit or stand, and surrender only applies to the first two cards and never
+after a split). It then applies deviations when `tc` is a number and `indexSet`
+isn't `'none'`.
+
+Double Exposure (`js/engine/de.js`): `getDEChart(rules)` and `decideDE(hand, dealerHand, rules, opts)`.
+The chart is keyed by player row × dealer hand (`'h12'`, `'s17'`, …). The exact
+layout is the engine agent's choice and is documented in the file header.
+
+## Contract: deviations (`js/data/deviations.js`)
+
+```js
+export const DEVIATIONS = {
+  s17: [ Entry… ],   // multi-deck (4-8D) S17 indices
+  h17: [ Entry… ],   // multi-deck H17 indices
+  // optional: notes on how indices shift for 1-2 decks
+};
+Entry = {
+  id: 'i18-16v10',  set: 'i18'|'fab4'|'insurance',  rank: 1,   // I18 order of importance
+  table: 'hard'|'soft'|'pairs', row: '16', up: '10',
+  index: 0,                 // true count threshold
+  when: 'ge'|'le',          // 'ge': take `action` when TC >= index; 'le': take it when TC <= index
+  action: 'S'|'H'|'D'|'P'|'R'|'insure',   // the deviation play
+  otherwise: 'H'|'S'|...,   // what basic strategy does
+  label: 'Stand 16 vs 10 at 0 or higher',
+  sources: ['…'],           // keys into docs/SOURCES.md
+}
+```
+
+## Contract: lessons (`js/data/lessons.js`)
+
+```js
+export const MODULES = [{
+  id: 'm1', title, icon /* one emoji */, summary,
+  lessons: [{ id: 'm1-l1', title, minutes, blocks: Block[] }],
+  checkpoint: { drill: DrillId, params, pass: { accuracy: 0.9, items: 40 }, label },
+}];
+Block =
+  { t: 'p',     md }                       // paragraph; **bold**, *italic*, `code` only
+  { t: 'h',     text }                     // sub-heading
+  { t: 'list',  items: [md…], ordered? }
+  { t: 'tip'|'warn'|'pro', md }            // callouts (pro = coach's experience)
+  { t: 'table', head: [..], rows: [[..]], caption? }
+  { t: 'cards', cards: ['A♠','K♥'], caption? }      // rendered as real cards
+  { t: 'quiz',  q, options: [..], answer: i, explain }
+  { t: 'drill', drill: DrillId, params, label }     // a launch button for a practice drill
+  { t: 'chart', preset?: id, table?: 'hard'|'soft'|'pairs', highlight?: [[row, up]…] }
+  { t: 'diff',  from: presetId, to: presetId }      // "what changes": chart cells that differ
+  { t: 'he',    presets: [id…] }                     // house-edge comparison bars (engine-computed)
+```
+
+## Drill ids (implemented in `js/drills/`)
+
+| id | what | params |
+|---|---|---|
+| `hand-total` | what's the total, soft or hard | `{ count }` |
+| `dealer-rules` | does the dealer hit or stand | `{ preset }` |
+| `payouts` | what does this bet pay | `{ preset }` |
+| `bs-flash` | basic-strategy flashcards, misses repeat | `{ preset, tables: ['hard','soft','pairs'] }` |
+| `bs-hands` | play full hands, corrected on every decision | `{ preset }` |
+| `rule-spot` | which rule set says what here | `{ from, to }` |
+| `count-tags` | a card is shown, answer +1 / 0 / −1 | `{ count }` |
+| `count-pairs` | two cards, the net count | `{ count }` |
+| `deck-countdown` | count a deck against the clock; it should end at 0 | `{ decks: 1, removed: 0|1|3 }` |
+| `running-count` | cards flash at a set speed; asks for the RC | `{ speed, rounds }` |
+| `deck-estimation` | discard tray picture: how many decks are left | `{ decks }` |
+| `true-count` | RC + decks remaining: what's the TC | `{ preset }` |
+| `deviation-flash` | situation + TC: what's the play | `{ preset, indexSet }` |
+| `bet-ramp` | TC: what's your bet | `{ ramp }` |
+| `casino` | full table simulator | `{ preset, mode: 'practice'|'test' }` |
+
+## Voice
+
+A friendly, direct coach talking to one student in the second person, who's patient with
+the basics and blunt about money ("6:5 games are not beatable; walk past them").
+`pro` callouts are practical advice of the kind an experienced counter would give.
+They aren't invented personal stories. Short paragraphs, phone-sized. Counting is
+legal, but casinos are private property and can refuse your play; the app says so
+plainly and includes a responsible-gambling note.

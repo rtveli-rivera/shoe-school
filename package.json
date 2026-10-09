@@ -1,0 +1,26 @@
+{
+  "name": "shoe-school",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shoe School: blackjack basic strategy and Hi-Lo card counting trainer. The web app is a no-build static PWA; Node is only for tests, chart precompute and the Capacitor Android wrapper.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "build:charts": "node scripts/build-charts.mjs",
+    "icons:web": "node scripts/gen-icons.mjs --web",
+    "icons": "node scripts/gen-icons.mjs",
+    "sync-web": "node scripts/sync-web.mjs",
+    "sync": "npm run sync-web && cap sync android",
+    "open:android": "cap open android",
+    "build:apk": "npm run sync-web && cap sync android && node scripts/build-apk.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0",
+    "sharp": "^0.33.5"
+  }
+}
