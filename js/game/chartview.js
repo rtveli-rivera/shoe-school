@@ -12,26 +12,26 @@ export function rowsOf(table) {
   return table === 'hard' ? HARD_ROWS : table === 'soft' ? SOFT_ROWS : PAIR_ROWS;
 }
 
-function sameRow(t, a, b) {
-  return t[a] && t[b] && UPCARDS.every((u) => t[a][u] === t[b][u]);
+function sameRow(t, a, b, cols) {
+  return t[a] && t[b] && cols.every((u) => t[a][u] === t[b][u]);
 }
 
 // Hard and soft rows that are identical at the top (17+ stand) or bottom (low
 // totals always hit) are merged into one "18–21" / "5–8" line, the way printed
 // charts do it. The middle is never merged: every total there is worth learning.
-function groupedRows(chart, table) {
+function groupedRows(chart, table, cols) {
   const rows = rowsOf(table).filter((r) => chart[table] && chart[table][r]); // descending totals
   if (table === 'pairs') return rows.map((r) => ({ rows: [r], label: rowLabel(table, r) }));
   const t = chart[table];
   // top: rows identical to the highest total, all 17 or more (hard) / soft 19+ (soft)
   const topMin = table === 'hard' ? 17 : 19;
   let a = 1;
-  while (a < rows.length && Number(rows[a]) >= topMin && sameRow(t, rows[0], rows[a])) a++;
+  while (a < rows.length && Number(rows[a]) >= topMin && sameRow(t, rows[0], rows[a], cols)) a++;
   // bottom (hard only): rows identical to the lowest total, all 8 or less
   let b = rows.length;
   if (table === 'hard') {
     b = rows.length - 1;
-    while (b - 1 >= a && Number(rows[b - 1]) <= 8 && sameRow(t, rows[rows.length - 1], rows[b - 1])) b--;
+    while (b - 1 >= a && Number(rows[b - 1]) <= 8 && sameRow(t, rows[rows.length - 1], rows[b - 1], cols)) b--;
   }
   const lab = (r) => rowLabel(table, r);
   const out = [];
@@ -43,22 +43,25 @@ function groupedRows(chart, table) {
   return out;
 }
 
-// opts: { highlight: [[row, up]], diffWith: otherChart, onCell(table, row, up, code) }
+// opts: { highlight: [[row, up]], diffWith: otherChart, onCell(table, row, up, code),
+//         cols: column keys (default: the ten upcards), colLabel(key) }
 export function chartTable(chart, table, opts = {}) {
   const hl = new Set((opts.highlight || []).map(([r, u]) => `${r}|${u}`));
-  const groups = groupedRows(chart, table);
+  const cols = opts.cols || UPCARDS;
+  const colLabel = opts.colLabel || ((u) => u);
+  const groups = groupedRows(chart, table, cols);
   const head = el('tr', {}, el('th', { class: 'rowh' }, table === 'pairs' ? 'Pair' : table === 'soft' ? 'Soft' : 'Hard'),
-    UPCARDS.map((u) => el('th', { scope: 'col' }, u)));
+    cols.map((u) => el('th', { scope: 'col' }, colLabel(u))));
   const body = groups.map((g) => {
     const row = g.rows[0];
     return el('tr', {}, el('th', { class: 'rowh', scope: 'row' }, g.label),
-      UPCARDS.map((u) => {
+      cols.map((u) => {
         const code = chart[table][row][u];
         const cls = [`c-${code}`];
         if (g.rows.some((r) => hl.has(`${r}|${u}`))) cls.push('hl');
         if (opts.diffWith && opts.diffWith[table] && opts.diffWith[table][row] && opts.diffWith[table][row][u] !== code) cls.push('diff');
         return el('td', {
-          class: cls.join(' '), title: `${g.label} vs ${u}: ${CODE_TEXT[code] || code}`,
+          class: cls.join(' '), title: `${g.label} vs ${colLabel(u)}: ${CODE_TEXT[code] || code}`,
           onclick: opts.onCell ? () => opts.onCell(table, row, u, code) : undefined,
         }, code);
       }));

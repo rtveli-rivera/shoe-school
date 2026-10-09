@@ -2,7 +2,7 @@
 
 import { el, fmtPct, fmtSigned } from '../ui.js';
 import { PRESETS, presetById, rulesFor, describeRules } from '../engine/rules.js';
-import { chartFor, strategy, tableName } from '../game/shared.js';
+import { chartFor, strategy, doubleExposure, tableName } from '../game/shared.js';
 import { chartTable, chartLegend, evBreakdown } from '../game/chartview.js';
 import { settings } from '../store.js';
 import { DEVIATIONS } from '../data/deviations.js';
@@ -63,20 +63,23 @@ function indexTab(body, rules) {
   const key = rules.hitSoft17 ? 'h17' : 's17';
   const list = DEVIATIONS[key] || [];
   const groups = [['insurance', 'Insurance'], ['i18', 'The Illustrious 18'], ['fab4', 'The Fab 4 (surrender)']];
-  const fmtAction = { S: 'Stand', H: 'Hit', D: 'Double', P: 'Split', R: 'Surrender', insure: 'Insure' };
+  const handText = (d) => (d.table === 'insurance' ? 'Dealer shows an ace' : `${d.table === 'pairs' ? `${d.row === '10' ? 'T' : d.row},${d.row === '10' ? 'T' : d.row}` : d.row} vs ${d.up}`);
+  const basics = list.filter((d) => d.set === 'basic');
   body.replaceChildren(
-    el('p', { class: 'muted', style: { fontSize: '14px' } }, `Hi-Lo index plays for ${key.toUpperCase()} multi-deck games. Make the play when the true count reaches the index (≥ for positive plays, ≤ for the "hit below" ones). The Settings tab chooses which set the simulator expects.`),
+    el('p', { class: 'muted', style: { fontSize: '14px' } }, `Hi-Lo index plays for ${key.toUpperCase()} multi-deck games. One rule reads every line: at the index or above, make the bolder play; below it, play it safe. Settings chooses which set the simulator expects.`),
+    rules.surrender !== 'late' ? el('div', { class: 'callout tip' }, el('p', {}, 'This game has no surrender, so the Fab 4 do not apply here.')) : null,
     list.length ? groups.map(([set, title]) => {
       const rows = list.filter((d) => d.set === set);
-      if (!rows.length) return null;
+      if (!rows.length || (set === 'fab4' && rules.surrender !== 'late')) return null;
       return el('div', {}, el('h2', {}, title), el('table', { class: 'plain' },
         el('thead', {}, el('tr', {}, el('th', {}, '#'), el('th', {}, 'Hand'), el('th', {}, 'Play'), el('th', { style: { textAlign: 'right' } }, 'Index'))),
         el('tbody', {}, rows.map((d, i) => el('tr', {},
           el('td', { class: 'faint' }, d.rank || i + 1),
-          el('td', {}, d.set === 'insurance' ? 'Dealer ace' : `${d.table === 'pairs' ? `${d.row},${d.row}` : d.row} vs ${d.up}`),
-          el('td', {}, `${fmtAction[d.action] || d.action}${d.when === 'le' ? ' at or below' : ' at or above'}`, d.otherwise ? el('div', { class: 'faint', style: { fontSize: '12px' } }, `otherwise ${fmtAction[d.otherwise] || d.otherwise}`) : null),
-          el('td', { class: 'num', style: { textAlign: 'right', fontWeight: 800 } }, fmtSigned(d.index)))))));
-    }) : el('div', { class: 'feedback info' }, 'Index tables are loading in the next update.'),
+          el('td', {}, handText(d)),
+          el('td', {}, d.label, d.note ? el('div', { class: 'faint', style: { fontSize: '12px' } }, d.note) : null),
+          el('td', { class: 'num', style: { textAlign: 'right', fontWeight: 800 } }, fmtSigned(d.printed ?? d.index)))))));
+    }) : el('div', { class: 'feedback info' }, 'Index tables are not available.'),
+    basics.length ? el('div', { class: 'callout tip' }, el('p', {}, `Already basic strategy in ${key.toUpperCase()}: ${basics.map((d) => `${handText(d)} (${d.label || 'basic play'})`).join('; ')}.`)) : null,
   );
 }
 
@@ -87,8 +90,7 @@ async function edgeTab(body) {
     const rules = rulesFor(p.id);
     let he = null;
     try {
-      const chart = await chartFor(rules);
-      he = rules.variant === 'de' ? chart.houseEdge : s.houseEdge(rules);
+      he = rules.variant === 'de' ? (await doubleExposure()).houseEdgeDE(rules) : (await chartFor(rules), s.houseEdge(rules));
     } catch (err) { console.warn(err); }
     rows.push({ p, he });
   }

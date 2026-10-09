@@ -4,7 +4,7 @@ import { el, md, mdInline, fmtPct } from '../ui.js';
 import { markLesson, lessonDone, moduleUnlocked } from '../store.js';
 import { findLesson } from '../game/content.js';
 import { cardEl } from '../game/cards.js';
-import { chartFor, strategy, currentPresetId, CODE_TEXT, rowLabel, tableName } from '../game/shared.js';
+import { chartFor, strategy, doubleExposure, currentPresetId, CODE_TEXT, rowLabel, tableName } from '../game/shared.js';
 import { chartTable, chartLegend, chartDiff, evBreakdown } from '../game/chartview.js';
 import { rulesFor, presetById } from '../engine/rules.js';
 import { checkpointHref } from './learn.js';
@@ -152,8 +152,7 @@ async function heBlock(b) {
     try {
       const rules = rulesFor(id);
       if (rules.variant === 'de') {
-        const chart = await chartFor(id);
-        he = chart.houseEdge;
+        he = (await doubleExposure()).houseEdgeDE(rules);
       } else {
         await chartFor(id);
         he = s.houseEdge(rules);

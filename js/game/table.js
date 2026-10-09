@@ -53,7 +53,9 @@ export class Table {
   get decksLeftExact() { return this.cardsLeft / 52; }
   get decksLeftEstimate() { return estimateDecksRemaining(this.cardsLeft); }
   get decksDiscarded() { return this.discards / 52; }
-  get needsShuffle() { return this.pos >= this.cutAt; }
+  // Shuffle at the cut card, or earlier if a full round might not fit in what is
+  // left (single deck with a crowded table): a dealer never runs out mid-round.
+  get needsShuffle() { return this.pos >= this.cutAt || this.cardsLeft < 8 * this.seats.length + 8; }
   // The true count a perfect counter would use: seen count over the decks still to be dealt
   // (estimated to the half deck, as at a real table).
   get tc() { return trueCount(this.rc, this.decksLeftEstimate); }

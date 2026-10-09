@@ -13,7 +13,7 @@ start "" "http://localhost:%PORT%/index.html"
 
 where py >nul 2>nul
 if %errorlevel%==0 (
-  py -m http.server %PORT% --bind 127.0.0.1
+  py scripts\serve.py %PORT%
 ) else (
-  python -m http.server %PORT% --bind 127.0.0.1
+  python scripts\serve.py %PORT%
 )
