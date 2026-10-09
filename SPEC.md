@@ -58,7 +58,7 @@ unlocks the next module. Settings has "I already know this, unlock everything".
 - No build step and no runtime dependencies. ES modules loaded directly by `index.html`.
 - `js/engine/**` and `js/data/**` are **pure**: no DOM and no Node APIs, so the browser,
   the Node tests and the scripts import the same files.
-- Tests: `node --test test/` (Node 24 built-in runner, no packages). Tests use fixed
+- Tests: `npm test` (= `node --test "test/*.test.mjs"`, Node 24 built-in runner, no packages). Tests use fixed
   seeds and work counts, never the wall clock.
 - Data that ships to the browser is a JS module (`export const X = …`), not JSON, so it
   loads with a plain `import` everywhere.

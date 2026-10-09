@@ -5,7 +5,7 @@
   "description": "Shoe School: blackjack basic strategy and Hi-Lo card counting trainer. The web app is a no-build static PWA; Node is only for tests, chart precompute and the Capacitor Android wrapper.",
   "type": "module",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.mjs\"",
     "build:charts": "node scripts/build-charts.mjs",
     "icons:web": "node scripts/gen-icons.mjs --web",
     "icons": "node scripts/gen-icons.mjs",

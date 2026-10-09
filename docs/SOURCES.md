@@ -215,7 +215,7 @@ Hard-coded numbers in the lessons that the engine also computes (or could):
 | m3-l3 table | Double 9-11 only −0.09 | 0.09 | 0.096 |
 | m3-l3 table | Late surrender +0.07 | 0.07 | 0.073 |
 | m3-l3 table | Resplit aces +0.08 | 0.08 | 0.069 |
-| m3-l3 table | No resplitting −0.1 | 0.10 | **0.053: check the split approximation in `ev.js`** |
+| m3-l3 table | No resplitting −0.05 (was −0.1) | 0.10 on the rule-variations page; 0.0548 from the same site's house-edge calculator (8D S17 DAS) | 0.0546. Resolved: the rule-variations page is the outlier (its own "split to 3 hands −0.01" agrees with the calculator); see docs/VALIDATION.md. Lesson now says about 0.05% |
 | m3-l5 | ENHC costs about 0.1% | 0.11 | 0.11 (euro-enhc vs 6D S17 DAS no-LS) |
 | m2-l5, m3-l2 | S17→H17 changes 6 cells: 11vA D, 15vA Rh, 17vA Rs, A7v2 Ds, A8v6 Ds, 8,8vA Rp | — | matches |
 | m3-l2 | 6D H17 → 2D H17 (no LS): 9v2 D, A3v4 D, 6,6v2 P, 6,6v7 Ph, 7,7v8 Ph (+ A,A unsplit v5 D) | — | matches |
