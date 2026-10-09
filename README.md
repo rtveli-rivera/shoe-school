@@ -8,6 +8,9 @@ bet ramps and bankroll risk, and a casino simulator with a test-out.
 No accounts, no server, no build step. It runs offline and keeps progress on
 the device. Android APK via Capacitor.
 
+**Live: https://rtveli-rivera.github.io/shoe-school/** (GitHub Pages, repo
+[rtveli-rivera/shoe-school](https://github.com/rtveli-rivera/shoe-school)).
+
 ## Run it
 
 Double-click **start.bat**. It serves the app on http://localhost:8146 and opens
@@ -68,9 +71,12 @@ icons` regenerates the launcher icons and splash screen from `icons/icon.svg`.)
 Copy `dist/shoe-school.apk` to the phone and open it (allow "install unknown apps"
 for your file manager once).
 
-**PWA** (any phone, needs HTTPS hosting): push this folder to GitHub Pages (or drop
-it on Netlify), open the URL on the phone, then "Add to Home Screen". It works
-offline after the first visit.
+**PWA** (any phone): open https://rtveli-rivera.github.io/shoe-school/ on the phone.
+- **Android (Chrome):** ⋮ menu → **Install app** / Add to Home Screen.
+- **iPhone (Safari):** Share → **Add to Home Screen**.
+
+It launches full-screen and works offline after the first visit. Progress is kept
+per device (Settings → Save backup to move it).
 
 ### Releasing an update
 
@@ -78,8 +84,9 @@ offline after the first visit.
 py bump.py           # bumps the version + the offline cache, regenerates the file list
 ```
 
-Then commit and push (PWA) or `npm run build:apk` (Android). Installed PWAs show
-an "Update" banner.
+Then `git commit -am "release"` and `git push`: GitHub Pages redeploys the same URL
+within a minute, and installed copies show an "Update" banner. For Android, also
+`npm run build:apk`.
 
 ## Layout
 
