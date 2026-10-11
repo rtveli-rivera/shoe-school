@@ -386,3 +386,10 @@ details.more summary { cursor: pointer; color: var(--gold); min-height: 36px; }
   border: 1px solid var(--line); color: var(--muted); text-decoration: none; background: var(--bg-2); white-space: nowrap;
 }
 a.cite:hover { color: var(--gold); border-color: var(--gold-2); }
+
+/* chart peek: the whole chart fits a phone-width panel without side-scrolling */
+.modal .chart-wrap { margin: 0 0 10px; padding: 0; overflow-x: visible; }
+.modal table.chart { min-width: 0; table-layout: fixed; border-spacing: 2px; }
+.modal table.chart th.rowh { width: 34px; padding-right: 4px; }
+.modal table.chart td { min-width: 0; padding: 5px 0; font-size: 12px; }
+@media (max-width: 420px) { .modal { padding: 14px 10px; } }

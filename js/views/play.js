@@ -13,13 +13,14 @@ import { strategy, doubleExposure, ACTIONS, CODE_TEXT } from '../game/shared.js'
 import { rampFor, unitsFor } from '../game/ramps.js';
 import { actionButtons, choiceButtons } from '../drills/common.js';
 import { allowedSet } from '../drills/bs-flash.js';
-import { settings, recordSim, recordCheckpoint } from '../store.js';
+import { settings, recordSim, recordCheckpoint, noteItem } from '../store.js';
 import { presetById, rulesFor, describeRules } from '../engine/rules.js';
 import { trueCount } from '../engine/hilo.js';
 import { mulberry32, randomSeed } from '../engine/rng.js';
 import { loadLessons } from '../game/content.js';
 import { openGamePicker } from '../app.js';
 import { analyzeSession, luckVerdict } from '../game/sessionvalue.js';
+import { peekButton, showChartPeek, showRampPeek } from '../game/peek.js';
 import { sessionChart, sessionLegend, ACTUAL, EXPECTED } from '../game/linechart.js';
 
 const TEST_ROUNDS = 50;
@@ -76,7 +77,10 @@ async function runTable(root, presetId, mode, query, navigate) {
   let round = 0;          // rounds started (the HUD shows the one in play)
   let completed = 0;      // rounds finished (the summary counts these)
   let net = 0;
-  const stats = { decisions: 0, errors: 0, bets: 0, betErrors: 0, counts: 0, countErrors: 0, insurance: 0, insuranceErrors: 0 };
+  const stats = { decisions: 0, errors: 0, bets: 0, betErrors: 0, counts: 0, countErrors: 0, insurance: 0, insuranceErrors: 0, peeks: 0, betPeeks: 0 };
+  // practice mode only: decisions made after peeking at the chart are not scored
+  const canPeek = mode === 'practice';
+  const peeked = [];       // { round, text, key } for the summary and the flashcards
   const mistakes = [];
   // per finished round, for the luck-vs-skill chart: { bet, tc, net, mistakes }
   const rounds = [];
@@ -203,9 +207,21 @@ async function runTable(root, presetId, mode, query, navigate) {
           : s.decide(ranks, dealerRanks[0], rules, { ...opts, tc: t, indexSet });
         const res = ask(tc.est);
         const resAlt = ask(tc.exact);
+        let didPeek = false;
+        const handText = `${cardsValue(hand.cards).soft ? 'soft ' : ''}${cardsValue(hand.cards).total} vs ${dealerRanks[0] === 1 ? 'A' : dealerRanks[0]}`;
         const buttons = actionButtons(allowedSet(opts), (picked) => {
           buttons.lock();
           const ok = picked === res.action || picked === resAlt.action;
+          if (didPeek) {
+            // assisted: not scored, but a wrong play still costs money (luck chart)
+            if (!ok) cur?.mistakes.push({
+              kind: 'play', table: res.table, row: res.row, col: res.col, up: dealerRanks[0],
+              chosen: picked, right: res.action, bet: hand.bet, chart: de ? de.getDEChart(rules) : null, ...where(),
+            });
+            practiceNote(ok, ok ? '✓ (peeked: not scored)' : `✗ **${ACTIONS[res.action].label}**. Peeked, so not scored. Playing your choice.`);
+            resolve(picked);
+            return;
+          }
           stats.decisions++;
           if (!ok) {
             stats.errors++;
@@ -221,7 +237,16 @@ async function runTable(root, presetId, mode, query, navigate) {
           }
           resolve(picked);
         });
-        controls.replaceChildren(buttons.node);
+        const peek = canPeek ? peekButton(async () => {
+          if (!didPeek) {
+            didPeek = true; stats.peeks++;
+            const cell = await showChartPeek({ rules, presetId, hand: ranks, up: de ? dealerRanks : dealerRanks[0], opts, indexSet });
+            peeked.push({ round, text: handText, key: de ? null : `${presetId}|${cell.table}|${cell.row}|${cell.col}` });
+          } else {
+            showChartPeek({ rules, presetId, hand: ranks, up: de ? dealerRanks : dealerRanks[0], opts, indexSet });
+          }
+        }) : null;
+        controls.replaceChildren(buttons.node, peek ? el('div', { class: 'row', style: { justifyContent: 'center', marginTop: '6px' } }, peek) : null);
       });
     },
   };
@@ -235,6 +260,7 @@ async function runTable(root, presetId, mode, query, navigate) {
       const paintBet = () => { shown.textContent = `${bet}u · $${bet * st.unitSize}`; };
       const chip = (u, cls) => el('button', { class: `chipbtn ${cls}`, type: 'button', onclick: () => { bet = Math.min(bet + u, 40); paintBet(); } }, `+${u}`);
       let placed = false;
+      let rampPeeked = false;
       const deal = () => {
         // one bet per round: a double tap or a held Enter must not count twice
         if (placed) return;
@@ -244,21 +270,27 @@ async function runTable(root, presetId, mode, query, navigate) {
         const right = unitsFor(ramp, tc.est);
         const rightAlt = unitsFor(ramp, tc.exact);
         const ok = bet === right || bet === rightAlt;
-        stats.bets++;
-        if (!ok) { stats.betErrors++; logMistake('bet', `Bet ${bet}u at TC ${fmtSigned(tc.est)}: the ramp says **${right}u**`); }
-        practiceNote(ok, ok ? `✓ Bet right for true count ${fmtSigned(tc.est)}.` : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**.`);
+        if (rampPeeked) {
+          practiceNote(ok, ok ? '✓ (peeked at the ramp: not scored)' : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**. Peeked, so not scored.`);
+        } else {
+          stats.bets++;
+          if (!ok) { stats.betErrors++; logMistake('bet', `Bet ${bet}u at TC ${fmtSigned(tc.est)}: the ramp says **${right}u**`); }
+          practiceNote(ok, ok ? `✓ Bet right for true count ${fmtSigned(tc.est)}.` : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**.`);
+        }
         lastBet = bet;
         cur = { bet, tc: table.tcExact, net: 0, mistakes: [] };
         resolve(bet);
       };
-      const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); deal(); } };
+      const onKey = (e) => { if (document.querySelector('.modal-back')) return; if (e.key === 'Enter') { e.preventDefault(); deal(); } };
       document.addEventListener('keydown', onKey);
       controls.replaceChildren(
         el('p', { class: 'center muted', style: { margin: '0 0 4px' } }, 'Place your bet'),
         shown,
         el('div', { class: 'chips' }, chip(1, 'chip-1'), chip(2, 'chip-5'), chip(4, 'chip-25'), chip(8, 'chip-100'),
           el('button', { class: 'btn small', type: 'button', onclick: () => { bet = 1; paintBet(); } }, 'Min')),
-        el('button', { class: 'btn primary block', type: 'button', style: { marginTop: '10px' }, onclick: deal }, 'Deal (Enter)'));
+        el('button', { class: 'btn primary block', type: 'button', style: { marginTop: '10px' }, onclick: deal }, 'Deal (Enter)'),
+        canPeek ? el('div', { class: 'row', style: { justifyContent: 'center', marginTop: '6px' } },
+          peekButton(() => { if (!rampPeeked) { rampPeeked = true; stats.betPeeks++; } showRampPeek(ramp, st.unitSize); }, { label: '🪜 Ramp', title: 'Peek at your bet ramp (C)' })) : null);
       paintBet();
     });
   }
@@ -359,6 +391,7 @@ async function runTable(root, presetId, mode, query, navigate) {
     if (!alive) return;
     alive = false;
     document.body.classList.remove('fullscreen');
+    for (const x of peeked) if (x.key) noteItem('bs-flash', x.key, false);
     recordSim({ rounds: completed, decisions: stats.decisions, errors: stats.errors, betErrors: stats.betErrors, countChecks: stats.counts, countErrors: stats.countErrors });
     const part = (n, e) => (n ? (n - e) / n : 1);
     const show = (n, e) => (n ? `${fmtPct(part(n, e) * 100, 1)} (${n - e}/${n})` : '—');
@@ -391,7 +424,12 @@ async function runTable(root, presetId, mode, query, navigate) {
         el('span', {}, 'Playing decisions'), el('span', { class: 'v' }, show(stats.decisions + stats.insurance, stats.errors + stats.insuranceErrors)),
         el('span', {}, 'Bets on the ramp'), el('span', { class: 'v' }, show(stats.bets, stats.betErrors)),
         el('span', {}, 'Count checks'), el('span', { class: 'v' }, show(stats.counts, stats.countErrors)),
-        el('span', {}, 'Overall'), el('span', { class: 'v' }, total ? fmtPct(overall * 100, 1) : '—'))),
+        el('span', {}, 'Overall'), el('span', { class: 'v' }, total ? fmtPct(overall * 100, 1) : '—'),
+        stats.peeks || stats.betPeeks ? [el('span', {}, 'Peeked (not scored)'), el('span', { class: 'v' }, `${stats.peeks} play${stats.peeks === 1 ? '' : 's'} · ${stats.betPeeks} bet${stats.betPeeks === 1 ? '' : 's'}`)] : null)),
+      peeked.length ? el('div', { class: 'card' },
+        el('h3', { style: { marginTop: 0 } }, 'Hands you peeked at'),
+        el('p', { class: 'muted', style: { fontSize: '14px', margin: '0 0 6px' } }, peeked.some((x) => x.key) ? 'These are now in your strategy flashcards, so they come back until you know them cold.' : 'Worth a look in the Charts tab before your next session.'),
+        el('div', { class: 'log', style: { maxHeight: 'none' } }, peeked.map((x) => el('div', {}, `R${x.round} · ${x.text}`)))) : null,
       luckCard(),
       mistakes.length ? el('div', { class: 'card' }, el('h3', { style: { marginTop: 0 } }, 'Every mistake'),
         el('div', { class: 'log', style: { maxHeight: 'none' } }, mistakes.map((m) => el('div', { class: 'bad', html: mdInline(`R${m.round} · ${m.text}`) })))) : el('p', { class: 'muted' }, 'No mistakes. 👏'),

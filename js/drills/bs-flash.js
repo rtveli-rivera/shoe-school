@@ -6,7 +6,8 @@ import { handEl, cardForRank } from '../game/cards.js';
 import { chartFor, strategy, doubleExposure, CODE_TEXT, rowLabel } from '../game/shared.js';
 import { evBreakdown } from '../game/chartview.js';
 import { handValue } from '../engine/rules.js';
-import { actionButtons, feedback, weightedPick, noteItem, ranksForRow, flashCells, rankOfUp } from './common.js';
+import { actionButtons, feedback, weightedPick, noteItem, ranksForRow, flashCells, rankOfUp, peekRow } from './common.js';
+import { showChartPeek } from '../game/peek.js';
 
 export function legalFor(ranks, rules, { fromSplit = false } = {}) {
   const v = handValue(ranks);
@@ -57,12 +58,18 @@ export function mount(stage, ctx) {
       }
       const right = res.action;
       const fb = el('div');
+      let didPeek = false;     // a peek turns this card into a miss (it comes back sooner)
       const buttons = actionButtons(allowedSet(opts), (picked) => {
         buttons.lock();
-        const ok = picked === right;
+        const correct = picked === right;
+        const ok = correct && !didPeek;
         buttons.mark(picked, right);
         ctx.report(ok);
         noteItem('bs-flash', keyOf(cell), ok);
+        if (didPeek) {
+          feedback(fb, false, `${correct ? 'Right play. ' : ''}Peeking counts as a miss, so this hand comes back soon. Chart: **${CODE_TEXT[res.code] || res.action}**.`, () => ctx.advance(next), { title: '👀 Peeked' });
+          return;
+        }
         const tName = cell.table === 'pairs' ? 'pair' : cell.table;
         const msg = el('div', {},
           el('p', { style: { margin: '6px 0' } }, `${tName === 'pair' ? 'Pair of' : tName[0].toUpperCase() + tName.slice(1)} ${rowLabel(cell.table, cell.row)} vs ${de ? dealerRanks.map((r) => r === 1 ? 'A' : r).join('+') : cell.up}: `,
@@ -80,7 +87,9 @@ export function mount(stage, ctx) {
           el('div', { class: 'me-zone', style: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '12px' } },
             handEl(mine, { spread: true }),
             el('span', { class: 'total-badge', style: { marginTop: '6px' } }, ranks[0] === ranks[1] ? `pair of ${ranks[0] === 1 ? 'aces' : ranks[0] === 10 ? 'tens' : ranks[0] + 's'}` : `${v.soft ? 'soft' : 'hard'} ${v.total}`))),
-        buttons.node, fb);
+        buttons.node,
+        peekRow(ctx, () => { didPeek = true; showChartPeek({ rules, presetId: ctx.presetId, hand: ranks, up: de ? dealerRanks : up, opts, indexSet: 'none' }); }),
+        fb);
     };
     next();
   })().catch((err) => { console.error(err); stage.replaceChildren(el('div', { class: 'feedback bad' }, `Could not load the strategy engine: ${err.message}`)); });

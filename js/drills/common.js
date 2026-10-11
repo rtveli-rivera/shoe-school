@@ -5,6 +5,7 @@ import { ACTIONS } from '../game/shared.js';
 import { cardForRank } from '../game/cards.js';
 import { shuffle } from '../engine/rng.js';
 import { misses, noteItem } from '../store.js';
+import { peekButton } from '../game/peek.js';
 
 // Blackjack action buttons. allowed: Set of action names. Keyboard: H S D P R.
 export function actionButtons(allowed, onPick, order = ['hit', 'stand', 'double', 'split', 'surrender']) {
@@ -17,7 +18,7 @@ export function actionButtons(allowed, onPick, order = ['hit', 'stand', 'double'
   }));
   const onKey = (e) => {
     if (!wrap.isConnected) { document.removeEventListener('keydown', onKey); return; }
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-back')) return; // not while a chart is open
     const a = order.find((x) => ACTIONS[x].key === e.key.toUpperCase());
     if (a && allowed.has(a) && !btns[a].disabled) { e.preventDefault(); onPick(a); }
   };
@@ -38,6 +39,7 @@ export function choiceButtons(options, onPick, { cls = '' } = {}) {
   const wrap = el('div', { class: 'choices' }, btns);
   const onKey = (e) => {
     if (!wrap.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (document.querySelector('.modal-back')) return;
     const n = Number(e.key);
     if (n >= 1 && n <= options.length && !btns[n - 1].disabled) { e.preventDefault(); onPick(options[n - 1].value, n - 1); }
   };
@@ -54,15 +56,15 @@ export function choiceButtons(options, onPick, { cls = '' } = {}) {
 
 // Feedback under an answer. Correct answers move on by themselves; a miss waits
 // for "Next" so there is time to read why.
-export function feedback(target, ok, content, onNext, { autoMs = 700 } = {}) {
+export function feedback(target, ok, content, onNext, { autoMs = 700, title } = {}) {
   const next = el('button', { class: 'btn primary', type: 'button', style: { marginTop: '10px' } }, 'Next →');
   const box = el('div', { class: `feedback ${ok ? 'good' : 'bad'}` },
-    el('b', {}, ok ? '✓ Correct' : '✗ Not quite'),
+    el('b', {}, title || (ok ? '✓ Correct' : '✗ Not quite')),
     content ? (typeof content === 'string' ? el('div', { html: mdInline(content) }) : content) : null);
   target.replaceChildren(box);
   let fired = false;
   const go = () => { if (fired) return; fired = true; document.removeEventListener('keydown', onKey); onNext(); };
-  const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  const onKey = (e) => { if (document.querySelector('.modal-back')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
   if (ok && autoMs >= 0) {
     setTimeout(go, autoMs);
   } else {
@@ -111,3 +113,10 @@ export function flashCells(tables) {
 }
 
 export function rankOfUp(up) { return up === 'A' ? 1 : Number(up); }
+
+// The "peek at the chart" button under a drill's answers. Checkpoints never get
+// one: a checkpoint measures what you know without help.
+export function peekRow(ctx, onPeek, opts) {
+  if (ctx.isCheckpoint) return null;
+  return el('div', { class: 'row', style: { justifyContent: 'center', marginTop: '8px' } }, peekButton(onPeek, opts));
+}

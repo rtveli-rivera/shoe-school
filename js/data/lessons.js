@@ -1242,6 +1242,7 @@ export const MODULES = [
           { t: 'list', ordered: true, items: [
             'Start slow, with one or two other players.',
             'Turn off the count peek as soon as you can.',
+            'Stuck on a hand? Tap **Chart** (or press C) to see the strategy chart with your hand marked. That decision isn’t scored, and the hand goes into your flashcards. **Ramp** does the same for your bet.',
             'Raise the speed and fill the table until it feels like a casino.',
           ] },
           { t: 'pro', md: 'Short, sharp sessions beat long, sloppy ones. Two shoes a day at full concentration will do more for you than an evening of half-attention.' },

@@ -138,6 +138,7 @@ export function numberPad({ onSubmit, allowNegative = true, allowHalf = false, p
   let disabled = false;
   const onKey = (e) => {
     if (!node.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (document.querySelector('.modal-back')) return;
     if (/^[0-9]$/.test(e.key)) press(e.key);
     else if (e.key === '-' || e.key === '+') press('±');
     else if (e.key === 'Backspace') press('del');

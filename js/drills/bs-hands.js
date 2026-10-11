@@ -6,7 +6,8 @@ import { el, sleep } from '../ui.js';
 import { handEl } from '../game/cards.js';
 import { Table, cardsValue } from '../game/table.js';
 import { strategy, doubleExposure, CODE_TEXT, ACTIONS } from '../game/shared.js';
-import { actionButtons, choiceButtons } from './common.js';
+import { actionButtons, choiceButtons, peekRow } from './common.js';
+import { showChartPeek } from '../game/peek.js';
 import { allowedSet } from './bs-flash.js';
 import { settings } from '../store.js';
 
@@ -66,19 +67,26 @@ export function mount(stage, ctx) {
           ? de.decideDE(ranks, table.dealer.cards.map((c) => c.v), rules, decideOpts)
           : s.decide(ranks, table.dealer.cards[0].v, rules, decideOpts);
         const right = res.action;
+        let didPeek = false;   // a peeked decision counts as a miss
         const buttons = actionButtons(allowedSet(opts), (picked) => {
           buttons.lock();
-          const ok = picked === right;
+          const ok = picked === right && !didPeek;
           buttons.mark(picked, right);
           ctx.report(ok);
-          if (ok) { note.replaceChildren(); setTimeout(() => resolve(picked), 150); }
+          if (didPeek && picked === right) {
+            note.replaceChildren(el('div', { class: 'feedback info' }, 'Right play, but you peeked: counted as a miss.'));
+            setTimeout(() => resolve(picked), 900);
+          } else if (ok) { note.replaceChildren(); setTimeout(() => resolve(picked), 150); }
           else {
             note.replaceChildren(el('div', { class: 'feedback bad' },
               el('b', {}, `✗ ${ACTIONS[right].label}. `), `Chart: ${CODE_TEXT[res.code] || res.code}. Playing it correctly…`));
             setTimeout(() => resolve(right), 1400);
           }
         });
-        controls.replaceChildren(buttons.node);
+        controls.replaceChildren(buttons.node, peekRow(ctx, () => {
+          didPeek = true;
+          showChartPeek({ rules, presetId: ctx.presetId, hand: ranks, up: de ? table.dealer.cards.map((c) => c.v) : table.dealer.cards[0].v, opts, indexSet: 'none' });
+        }));
       }),
     };
 

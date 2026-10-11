@@ -1,13 +1,14 @@
 // deviation-flash: the hand, the upcard and the true count. Basic strategy or
 // the index play? Counts are chosen around each index so the boundary is drilled.
 
-import { el, fmtSigned } from '../ui.js';
+import { el, fmtSigned, modal } from '../ui.js';
 import { handEl, cardForRank } from '../game/cards.js';
 import { strategy, ACTIONS, CODE_TEXT } from '../game/shared.js';
 import { DEVIATIONS } from '../data/deviations.js';
 import { settings } from '../store.js';
 import { pick } from '../engine/rng.js';
-import { actionButtons, choiceButtons, feedback, weightedPick, noteItem, ranksForRow, rankOfUp } from './common.js';
+import { actionButtons, choiceButtons, feedback, weightedPick, noteItem, ranksForRow, rankOfUp, peekRow } from './common.js';
+import { showChartPeek } from '../game/peek.js';
 import { legalFor, allowedSet } from './bs-flash.js';
 
 export function mount(stage, ctx) {
@@ -33,9 +34,10 @@ export function mount(stage, ctx) {
       if (dev.set === 'insurance' || dev.action === 'insure') {
         const right = s.takeInsurance(tc, rules);
         const opts = [{ label: 'Take insurance', value: true }, { label: 'Decline', value: false }];
+        let didPeek = false;   // a peek counts as a miss
         const c = choiceButtons(opts, (val, i) => {
           c.lock();
-          const ok = val === right;
+          const ok = val === right && !didPeek;
           c.mark(i, right ? 0 : 1);
           ctx.report(ok);
           noteItem('deviation-flash', dev.id, ok);
@@ -46,7 +48,14 @@ export function mount(stage, ctx) {
           el('div', { class: 'felt', style: { marginBottom: '12px' } },
             el('div', { class: 'dealer-zone' }, el('span', { class: 'label' }, 'Dealer'), handEl([cardForRank(1, rand), null], { hidden: [1], spread: true })),
             el('div', { class: 'me-zone', style: { display: 'flex', justifyContent: 'center', marginTop: '12px' } }, handEl(mine, { spread: true }))),
-          el('p', { class: 'prompt' }, 'Insurance?'), c.node, fb);
+          el('p', { class: 'prompt' }, 'Insurance?'), c.node,
+          peekRow(ctx, () => {
+            didPeek = true;
+            modal((close) => el('div', {}, el('div', { class: 'kicker' }, 'Insurance'),
+              el('p', {}, `Take insurance (or even money) at true count ${fmtSigned(dev.index)} or higher; decline below it.`),
+              el('button', { class: 'btn small primary', type: 'button', onclick: close }, 'Back')));
+          }, { label: '📋 Rule' }),
+          fb);
         return;
       }
 
@@ -56,22 +65,25 @@ export function mount(stage, ctx) {
       const basic = s.decide(ranks, up, rules, { ...opts, indexSet: 'none' });
       const res = s.decide(ranks, up, rules, { ...opts, tc, indexSet });
       const right = res.action;
+      let didPeek = false;   // a peek counts as a miss
       const buttons = actionButtons(allowedSet(opts), (picked) => {
         buttons.lock();
-        const ok = picked === right;
+        const ok = picked === right && !didPeek;
         buttons.mark(picked, right);
         ctx.report(ok);
         noteItem('deviation-flash', dev.id, ok);
         const deviates = res.source === 'deviation';
         feedback(fb, ok,
-          `${dev.label}. At ${fmtSigned(tc)}: **${ACTIONS[right].label}**${deviates ? ' (the index play)' : ` (basic strategy: ${CODE_TEXT[basic.code] || basic.action})`}.`,
-          () => ctx.advance(next), { autoMs: 1100 });
+          `${didPeek ? 'Peeked, so it counts as a miss. ' : ''}${dev.label}. At ${fmtSigned(tc)}: **${ACTIONS[right].label}**${deviates ? ' (the index play)' : ` (basic strategy: ${CODE_TEXT[basic.code] || basic.action})`}.`,
+          () => ctx.advance(next), { autoMs: 1100, title: didPeek ? '👀 Peeked' : undefined });
       });
       stage.replaceChildren(tcBox,
         el('div', { class: 'felt', style: { marginBottom: '12px' } },
           el('div', { class: 'dealer-zone' }, el('span', { class: 'label' }, 'Dealer'), handEl([cardForRank(up, rand), null], { hidden: [1], spread: true })),
           el('div', { class: 'me-zone', style: { display: 'flex', justifyContent: 'center', marginTop: '12px' } }, handEl(ranks.map((r) => cardForRank(r, rand)), { spread: true }))),
-        buttons.node, fb);
+        buttons.node,
+        peekRow(ctx, () => { didPeek = true; showChartPeek({ rules, presetId: ctx.presetId, hand: ranks, up, opts, indexSet }); }),
+        fb);
     };
     next();
   })().catch((err) => { console.error(err); stage.replaceChildren(el('div', { class: 'feedback bad' }, err.message)); });
