@@ -54,7 +54,7 @@ export function mount(stage, ctx) {
             modal((close) => el('div', {}, el('div', { class: 'kicker' }, 'Insurance'),
               el('p', {}, `Take insurance (or even money) at true count ${fmtSigned(dev.index)} or higher; decline below it.`),
               el('button', { class: 'btn small primary', type: 'button', onclick: close }, 'Back')));
-          }, { label: '📋 Rule' }),
+          }, { title: 'Hint: the insurance rule (?)' }),
           fb);
         return;
       }
@@ -74,8 +74,8 @@ export function mount(stage, ctx) {
         noteItem('deviation-flash', dev.id, ok);
         const deviates = res.source === 'deviation';
         feedback(fb, ok,
-          `${didPeek ? 'Peeked, so it counts as a miss. ' : ''}${dev.label}. At ${fmtSigned(tc)}: **${ACTIONS[right].label}**${deviates ? ' (the index play)' : ` (basic strategy: ${CODE_TEXT[basic.code] || basic.action})`}.`,
-          () => ctx.advance(next), { autoMs: 1100, title: didPeek ? '👀 Peeked' : undefined });
+          `${didPeek ? 'You used a hint, so it counts as a miss. ' : ''}${dev.label}. At ${fmtSigned(tc)}: **${ACTIONS[right].label}**${deviates ? ' (the index play)' : ` (basic strategy: ${CODE_TEXT[basic.code] || basic.action})`}.`,
+          () => ctx.advance(next), { autoMs: 1100, title: didPeek ? '💡 Hint used' : undefined });
       });
       stage.replaceChildren(tcBox,
         el('div', { class: 'felt', style: { marginBottom: '12px' } },

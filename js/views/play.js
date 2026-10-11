@@ -78,7 +78,7 @@ async function runTable(root, presetId, mode, query, navigate) {
   let completed = 0;      // rounds finished (the summary counts these)
   let net = 0;
   const stats = { decisions: 0, errors: 0, bets: 0, betErrors: 0, counts: 0, countErrors: 0, insurance: 0, insuranceErrors: 0, peeks: 0, betPeeks: 0 };
-  // practice mode only: decisions made after peeking at the chart are not scored
+  // practice mode only: decisions made after a hint (a peek at the chart) are not scored
   const canPeek = mode === 'practice';
   const peeked = [];       // { round, text, key } for the summary and the flashcards
   const mistakes = [];
@@ -218,7 +218,7 @@ async function runTable(root, presetId, mode, query, navigate) {
               kind: 'play', table: res.table, row: res.row, col: res.col, up: dealerRanks[0],
               chosen: picked, right: res.action, bet: hand.bet, chart: de ? de.getDEChart(rules) : null, ...where(),
             });
-            practiceNote(ok, ok ? '✓ (peeked: not scored)' : `✗ **${ACTIONS[res.action].label}**. Peeked, so not scored. Playing your choice.`);
+            practiceNote(ok, ok ? '✓ (hint used: not scored)' : `✗ **${ACTIONS[res.action].label}**. You used a hint, so it isn’t scored. Playing your choice.`);
             resolve(picked);
             return;
           }
@@ -271,7 +271,7 @@ async function runTable(root, presetId, mode, query, navigate) {
         const rightAlt = unitsFor(ramp, tc.exact);
         const ok = bet === right || bet === rightAlt;
         if (rampPeeked) {
-          practiceNote(ok, ok ? '✓ (peeked at the ramp: not scored)' : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**. Peeked, so not scored.`);
+          practiceNote(ok, ok ? '✓ (hint used: not scored)' : `✗ At true count ${fmtSigned(tc.est)} your ramp says **${right} unit${right > 1 ? 's' : ''}**. You used a hint, so it isn’t scored.`);
         } else {
           stats.bets++;
           if (!ok) { stats.betErrors++; logMistake('bet', `Bet ${bet}u at TC ${fmtSigned(tc.est)}: the ramp says **${right}u**`); }
@@ -290,7 +290,7 @@ async function runTable(root, presetId, mode, query, navigate) {
           el('button', { class: 'btn small', type: 'button', onclick: () => { bet = 1; paintBet(); } }, 'Min')),
         el('button', { class: 'btn primary block', type: 'button', style: { marginTop: '10px' }, onclick: deal }, 'Deal (Enter)'),
         canPeek ? el('div', { class: 'row', style: { justifyContent: 'center', marginTop: '6px' } },
-          peekButton(() => { if (!rampPeeked) { rampPeeked = true; stats.betPeeks++; } showRampPeek(ramp, st.unitSize); }, { label: '🪜 Ramp', title: 'Peek at your bet ramp (C)' })) : null);
+          peekButton(() => { if (!rampPeeked) { rampPeeked = true; stats.betPeeks++; } showRampPeek(ramp, st.unitSize); }, { title: 'Hint: your bet ramp (?)' })) : null);
       paintBet();
     });
   }
@@ -425,9 +425,9 @@ async function runTable(root, presetId, mode, query, navigate) {
         el('span', {}, 'Bets on the ramp'), el('span', { class: 'v' }, show(stats.bets, stats.betErrors)),
         el('span', {}, 'Count checks'), el('span', { class: 'v' }, show(stats.counts, stats.countErrors)),
         el('span', {}, 'Overall'), el('span', { class: 'v' }, total ? fmtPct(overall * 100, 1) : '—'),
-        stats.peeks || stats.betPeeks ? [el('span', {}, 'Peeked (not scored)'), el('span', { class: 'v' }, `${stats.peeks} play${stats.peeks === 1 ? '' : 's'} · ${stats.betPeeks} bet${stats.betPeeks === 1 ? '' : 's'}`)] : null)),
+        stats.peeks || stats.betPeeks ? [el('span', {}, 'Hints used (not scored)'), el('span', { class: 'v' }, `${stats.peeks} play${stats.peeks === 1 ? '' : 's'} · ${stats.betPeeks} bet${stats.betPeeks === 1 ? '' : 's'}`)] : null)),
       peeked.length ? el('div', { class: 'card' },
-        el('h3', { style: { marginTop: 0 } }, 'Hands you peeked at'),
+        el('h3', { style: { marginTop: 0 } }, 'Hands you used a hint on'),
         el('p', { class: 'muted', style: { fontSize: '14px', margin: '0 0 6px' } }, peeked.some((x) => x.key) ? 'These are now in your strategy flashcards, so they come back until you know them cold.' : 'Worth a look in the Charts tab before your next session.'),
         el('div', { class: 'log', style: { maxHeight: 'none' } }, peeked.map((x) => el('div', {}, `R${x.round} · ${x.text}`)))) : null,
       luckCard(),

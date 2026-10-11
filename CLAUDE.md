@@ -58,10 +58,10 @@ and never print the password. If it's lost, new APKs can no longer install over 
 - **No live win/loss graph at the table.** The session summary has the
   "Luck or skill?" chart instead (result vs. what the play was worth, inside a
   normal-luck band).
-- **"Peek" (📋 Chart / 🪜 Ramp):**
+- **💡 Hint** (the strategy chart with the hand marked, or the bet ramp while betting; key `?`; called "peek" in the code):
   - practice mode only;
-  - not scored in the simulator, and peeked hands are fed to the flashcards;
-  - a peek counts as a miss in drills;
+  - not scored in the simulator, and hinted hands are fed to the flashcards;
+  - a hint counts as a miss in drills;
   - never available in checkpoints or the test-out.
 - **Publishing:** a new GitHub release only after the owner says yes. Pushing to
   `main` is the normal web deploy.

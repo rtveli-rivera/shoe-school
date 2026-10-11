@@ -1242,7 +1242,7 @@ export const MODULES = [
           { t: 'list', ordered: true, items: [
             'Start slow, with one or two other players.',
             'Turn off the count peek as soon as you can.',
-            'Stuck on a hand? Tap **Chart** (or press C) to see the strategy chart with your hand marked. That decision isn’t scored, and the hand goes into your flashcards. **Ramp** does the same for your bet.',
+            'Stuck on a hand? Tap **Hint** (or press ?) to see the strategy chart with your hand marked. That decision isn’t scored, and the hand goes into your flashcards. While you bet, **Hint** shows your bet ramp.',
             'Raise the speed and fill the table until it feels like a casino.',
           ] },
           { t: 'pro', md: 'Short, sharp sessions beat long, sloppy ones. Two shoes a day at full concentration will do more for you than an evening of half-attention.' },
@@ -1257,7 +1257,7 @@ export const MODULES = [
         title: 'The test-out',
         minutes: 3,
         blocks: [
-          { t: 'p', md: 'The test-out is the simulator under real conditions: **50 rounds**, no peeking, and no feedback until the end.' },
+          { t: 'p', md: 'The test-out is the simulator under real conditions: **50 rounds**, no hints, no count peek, and no feedback until the end.' },
           { t: 'h', text: 'What\'s graded' },
           { t: 'list', items: [
             '**Playing**: every decision, insurance included, against basic strategy plus your chosen index plays.',

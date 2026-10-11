@@ -27,14 +27,14 @@ export function indexPlayFor(rules, table, row, up, indexSet) {
     && (d.set !== 'fab4' || (indexSet === 'i18fab4' && rules.surrender === 'late'))) || null;
 }
 
-// A small "Chart" button that opens the peek; key C does the same.
+// The "Hint" button that opens the peek; the ? key does the same.
 // onOpen() runs every time it is opened (callers count the peek there).
-export function peekButton(onOpen, { label = '📋 Chart', title = 'Peek at the strategy chart (C)' } = {}) {
-  const b = el('button', { class: 'btn small ghost', type: 'button', title, onclick: () => onOpen() }, label, el('span', { class: 'faint', style: { fontSize: '11px' } }, ' C'));
+export function peekButton(onOpen, { label = '💡 Hint', title = 'Hint: the strategy chart with your hand marked (?)' } = {}) {
+  const b = el('button', { class: 'btn small ghost', type: 'button', title, onclick: () => onOpen() }, label, el('span', { class: 'faint', style: { fontSize: '11px' } }, ' ?'));
   const onKey = (e) => {
     if (!b.isConnected) { document.removeEventListener('keydown', onKey); return; }
     if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal-back')) return;
-    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); onOpen(); }
+    if (e.key === '?' || e.key === '/') { e.preventDefault(); onOpen(); }
   };
   document.addEventListener('keydown', onKey);
   return b;

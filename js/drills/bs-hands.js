@@ -74,7 +74,7 @@ export function mount(stage, ctx) {
           buttons.mark(picked, right);
           ctx.report(ok);
           if (didPeek && picked === right) {
-            note.replaceChildren(el('div', { class: 'feedback info' }, 'Right play, but you peeked: counted as a miss.'));
+            note.replaceChildren(el('div', { class: 'feedback info' }, 'Right play, but you used a hint: counted as a miss.'));
             setTimeout(() => resolve(picked), 900);
           } else if (ok) { note.replaceChildren(); setTimeout(() => resolve(picked), 150); }
           else {

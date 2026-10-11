@@ -67,7 +67,7 @@ export function mount(stage, ctx) {
         ctx.report(ok);
         noteItem('bs-flash', keyOf(cell), ok);
         if (didPeek) {
-          feedback(fb, false, `${correct ? 'Right play. ' : ''}Peeking counts as a miss, so this hand comes back soon. Chart: **${CODE_TEXT[res.code] || res.action}**.`, () => ctx.advance(next), { title: '👀 Peeked' });
+          feedback(fb, false, `${correct ? 'Right play. ' : ''}A hint counts as a miss, so this hand comes back soon. Chart: **${CODE_TEXT[res.code] || res.action}**.`, () => ctx.advance(next), { title: '💡 Hint used' });
           return;
         }
         const tName = cell.table === 'pairs' ? 'pair' : cell.table;
